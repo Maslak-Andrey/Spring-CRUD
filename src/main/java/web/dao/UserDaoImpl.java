@@ -1,52 +1,80 @@
 package web.dao;
 
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import web.model.User;
-import java.util.ArrayList;
+
+import javax.persistence.EntityManagerFactory;
 import java.util.List;
 
 @Repository
 public class UserDaoImpl implements UserDao{
-    private static int COUNT;
-    
-    List<User> list;
 
-    {
-        list = new ArrayList<>();
+    private EntityManagerFactory entityManagerFactory;
 
-        list.add(new User(++COUNT,"Test1", "SuTest1", "test1@mail.com"));
-        list.add(new User(++COUNT,"Test2", "SuTest2", "test2@mail.com"));
-        list.add(new User(++COUNT,"Test3", "SuTest3", "test3@mail.com"));
-        list.add(new User(++COUNT,"Test4", "SuTest4", "test4@mail.com"));
+    @Autowired
+    public void setEntityManagerFactory(EntityManagerFactory entityManagerFactory) {
+        this.entityManagerFactory = entityManagerFactory;
+    }
+
+    public UserDaoImpl() {
     }
 
     @Override
     public List<User> userList() {
+        List<User> list = null;
+
+        try (Session session = entityManagerFactory.unwrap(SessionFactory.class).openSession()) {
+            list = (List<User>) session.createQuery("From User").list();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return list;
     }
 
     @Override
     public User show(int id) {
-        return list.stream().filter(user -> user.getId() == id).findAny().orElse(null);
+        User user = null;
+        try (Session session = entityManagerFactory.unwrap(SessionFactory.class).openSession()) {
+            user = session.get(User.class, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return user;
     }
 
     @Override
     public void save(User user) {
-        user.setId(++COUNT);
-        list.add(user);
+        try (Session session = entityManagerFactory.unwrap(SessionFactory.class).openSession()) {
+            session.beginTransaction();
+            session.save(user);
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void update(int id, User updatedUser) {
-        User userToBeUpdated = show(id);
-
-        userToBeUpdated.setName(updatedUser.getName());
-        userToBeUpdated.setSurname(updatedUser.getSurname());
-        userToBeUpdated.setEmail(updatedUser.getEmail());
+        try (Session session = entityManagerFactory.unwrap(SessionFactory.class).openSession()) {
+            session.beginTransaction();
+            session.update(updatedUser);
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void delete(int id) {
-        list.removeIf(u -> u.getId() == id);
+        try (Session session = entityManagerFactory.unwrap(SessionFactory.class).openSession()) {
+            session.beginTransaction();
+            session.remove(session.get(User.class, id));
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
